@@ -2,6 +2,7 @@ import { useTableStore } from "@/store/tableStore";
 import { DataTable, workerColumns, taskColumns } from "@/components/DataTable";
 import { FilterInput } from "@/components/FilterInput";
 import { TableHeader } from "@/components/TableHeader";
+import { Pagination } from "@/components/Pagination";
 import type { Worker } from "@/types";
 
 /**
@@ -16,17 +17,29 @@ function App() {
   // Получаем состояние и методы из store
   const viewMode = useTableStore((state) => state.viewMode);
   const filterText = useTableStore((state) => state.filterText);
+  const currentPage = useTableStore((state) => state.currentPage);
   const setFilter = useTableStore((state) => state.setFilter);
+  const setPage = useTableStore((state) => state.setPage);
   const selectWorker = useTableStore((state) => state.selectWorker);
   const resetToWorkers = useTableStore((state) => state.resetToWorkers);
   const getFilteredWorkers = useTableStore((state) => state.getFilteredWorkers);
   const getFilteredTasks = useTableStore((state) => state.getFilteredTasks);
   const getSelectedWorker = useTableStore((state) => state.getSelectedWorker);
+  const getPaginatedData = useTableStore((state) => state.getPaginatedData);
+  const getTotalPages = useTableStore((state) => state.getTotalPages);
 
   // Получаем отфильтрованные данные
   const filteredWorkers = getFilteredWorkers();
   const filteredTasks = getFilteredTasks();
   const selectedWorker = getSelectedWorker();
+
+  // Получаем данные для текущей страницы
+  const paginatedWorkers = getPaginatedData(filteredWorkers);
+  const paginatedTasks = getPaginatedData(filteredTasks);
+
+  // Получаем количество страниц
+  const workersTotalPages = getTotalPages(filteredWorkers.length);
+  const tasksTotalPages = getTotalPages(filteredTasks.length);
 
   // Обработчик клика по работнику
   const handleWorkerClick = (worker: Worker) => {
@@ -58,18 +71,32 @@ function App() {
 
         {/* Таблица данных */}
         {viewMode === "workers" ? (
-          <DataTable
-            data={filteredWorkers}
-            columns={workerColumns}
-            onRowClick={handleWorkerClick}
-            emptyMessage="Работники не найдены"
-          />
+          <>
+            <DataTable
+              data={paginatedWorkers}
+              columns={workerColumns}
+              onRowClick={handleWorkerClick}
+              emptyMessage="Работники не найдены"
+            />
+            <Pagination
+              currentPage={currentPage}
+              totalPages={workersTotalPages}
+              onPageChange={setPage}
+            />
+          </>
         ) : (
-          <DataTable
-            data={filteredTasks}
-            columns={taskColumns}
-            emptyMessage="Задачи не найдены"
-          />
+          <>
+            <DataTable
+              data={paginatedTasks}
+              columns={taskColumns}
+              emptyMessage="Задачи не найдены"
+            />
+            <Pagination
+              currentPage={currentPage}
+              totalPages={tasksTotalPages}
+              onPageChange={setPage}
+            />
+          </>
         )}
       </div>
     </div>

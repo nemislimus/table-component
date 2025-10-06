@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { Worker, Task, ViewMode } from "@/types";
+import { PAGE_SIZE } from "@/types";
 import { mockWorkers, getTasksByWorkerId } from "@/data/mockData";
 
 /**
@@ -10,16 +11,20 @@ interface TableState {
   viewMode: ViewMode;
   selectedWorkerId: string | null;
   filterText: string;
+  currentPage: number;
 
   // Геттеры
   getFilteredWorkers: () => Worker[];
   getFilteredTasks: () => Task[];
   getSelectedWorker: () => Worker | null;
+  getPaginatedData: <T>(data: T[]) => T[];
+  getTotalPages: (totalItems: number) => number;
 
   // Методы для управления состоянием
   setViewMode: (mode: ViewMode) => void;
   selectWorker: (workerId: string) => void;
   setFilter: (text: string) => void;
+  setPage: (page: number) => void;
   resetToWorkers: () => void;
 }
 
@@ -36,6 +41,7 @@ export const useTableStore = create<TableState>((set, get) => ({
   viewMode: "workers",
   selectedWorkerId: null,
   filterText: "",
+  currentPage: 1,
 
   /**
    * Получить отфильтрованный список работников
@@ -99,33 +105,60 @@ export const useTableStore = create<TableState>((set, get) => ({
 
   /**
    * Выбрать работника и переключиться на режим задач
-   * При выборе работника сбрасывается фильтр
+   * При выборе работника сбрасывается фильтр и страница
    */
   selectWorker: (workerId: string) => {
     set({
       selectedWorkerId: workerId,
       viewMode: "tasks",
-      filterText: "" // Сбрасываем фильтр при переходе к задачам
+      filterText: "", // Сбрасываем фильтр при переходе к задачам
+      currentPage: 1  // Сбрасываем на первую страницу
     });
+  },
+
+  /**
+   * Получить данные для текущей страницы
+   */
+  getPaginatedData: <T>(data: T[]) => {
+    const { currentPage } = get();
+    const startIndex = (currentPage - 1) * PAGE_SIZE;
+    const endIndex = startIndex + PAGE_SIZE;
+    return data.slice(startIndex, endIndex);
+  },
+
+  /**
+   * Получить общее количество страниц
+   */
+  getTotalPages: (totalItems: number) => {
+    return Math.ceil(totalItems / PAGE_SIZE);
   },
 
   /**
    * Установить текст фильтра
    * Фильтр работает в реальном времени
+   * При изменении фильтра сбрасываем на первую страницу
    */
   setFilter: (text: string) => {
-    set({ filterText: text });
+    set({ filterText: text, currentPage: 1 });
+  },
+
+  /**
+   * Установить номер текущей страницы
+   */
+  setPage: (page: number) => {
+    set({ currentPage: page });
   },
 
   /**
    * Сброс к списку работников
-   * Сбрасывает выбранного работника и фильтр
+   * Сбрасывает выбранного работника, фильтр и страницу
    */
   resetToWorkers: () => {
     set({
       viewMode: "workers",
       selectedWorkerId: null,
-      filterText: ""
+      filterText: "",
+      currentPage: 1
     });
   }
 }));

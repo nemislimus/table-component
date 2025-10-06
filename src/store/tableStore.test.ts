@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useTableStore } from './tableStore'
 import { mockWorkers } from '@/data/mockData'
+import { PAGE_SIZE } from '@/types'
 
 describe('tableStore', () => {
   // Сброс store перед каждым тестом
@@ -8,7 +9,8 @@ describe('tableStore', () => {
     useTableStore.setState({
       viewMode: 'workers',
       selectedWorkerId: null,
-      filterText: ''
+      filterText: '',
+      currentPage: 1
     })
   })
 
@@ -19,6 +21,7 @@ describe('tableStore', () => {
       expect(state.viewMode).toBe('workers')
       expect(state.selectedWorkerId).toBeNull()
       expect(state.filterText).toBe('')
+      expect(state.currentPage).toBe(1)
     })
   })
 
@@ -186,6 +189,105 @@ describe('tableStore', () => {
       const selectedWorker = getSelectedWorker()
 
       expect(selectedWorker).toEqual(testWorker)
+    })
+  })
+
+  describe('Пагинация', () => {
+    describe('getPaginatedData', () => {
+      it('должен возвращать первую страницу данных', () => {
+        const { getPaginatedData } = useTableStore.getState()
+        const testData = Array.from({ length: 30 }, (_, i) => ({ id: i }))
+
+        const page1 = getPaginatedData(testData)
+
+        expect(page1).toHaveLength(PAGE_SIZE)
+        expect(page1[0].id).toBe(0)
+        expect(page1[PAGE_SIZE - 1].id).toBe(PAGE_SIZE - 1)
+      })
+
+      it('должен возвращать вторую страницу данных', () => {
+        const { setPage, getPaginatedData } = useTableStore.getState()
+        const testData = Array.from({ length: 30 }, (_, i) => ({ id: i }))
+
+        setPage(2)
+        const page2 = getPaginatedData(testData)
+
+        expect(page2).toHaveLength(PAGE_SIZE)
+        expect(page2[0].id).toBe(PAGE_SIZE)
+        expect(page2[PAGE_SIZE - 1].id).toBe(PAGE_SIZE * 2 - 1)
+      })
+
+      it('должен возвращать последнюю неполную страницу', () => {
+        const { setPage, getPaginatedData } = useTableStore.getState()
+        const testData = Array.from({ length: 32 }, (_, i) => ({ id: i }))
+
+        setPage(3)
+        const page3 = getPaginatedData(testData)
+
+        expect(page3).toHaveLength(2)
+        expect(page3[0].id).toBe(30)
+        expect(page3[1].id).toBe(31)
+      })
+    })
+
+    describe('getTotalPages', () => {
+      it('должен правильно вычислять количество страниц', () => {
+        const { getTotalPages } = useTableStore.getState()
+
+        expect(getTotalPages(15)).toBe(1)
+        expect(getTotalPages(16)).toBe(2)
+        expect(getTotalPages(30)).toBe(2)
+        expect(getTotalPages(31)).toBe(3)
+        expect(getTotalPages(0)).toBe(0)
+      })
+    })
+
+    describe('setPage', () => {
+      it('должен устанавливать номер страницы', () => {
+        const { setPage } = useTableStore.getState()
+
+        setPage(3)
+        expect(useTableStore.getState().currentPage).toBe(3)
+
+        setPage(1)
+        expect(useTableStore.getState().currentPage).toBe(1)
+      })
+    })
+
+    describe('setFilter с пагинацией', () => {
+      it('должен сбрасывать на первую страницу при изменении фильтра', () => {
+        const { setPage, setFilter } = useTableStore.getState()
+
+        setPage(3)
+        expect(useTableStore.getState().currentPage).toBe(3)
+
+        setFilter('test')
+        expect(useTableStore.getState().currentPage).toBe(1)
+      })
+    })
+
+    describe('selectWorker с пагинацией', () => {
+      it('должен сбрасывать на первую страницу при выборе работника', () => {
+        const { setPage, selectWorker } = useTableStore.getState()
+
+        setPage(3)
+        expect(useTableStore.getState().currentPage).toBe(3)
+
+        selectWorker('W-001')
+        expect(useTableStore.getState().currentPage).toBe(1)
+      })
+    })
+
+    describe('resetToWorkers с пагинацией', () => {
+      it('должен сбрасывать на первую страницу', () => {
+        const { setPage, selectWorker, resetToWorkers } = useTableStore.getState()
+
+        setPage(3)
+        selectWorker('W-001')
+
+        resetToWorkers()
+        expect(useTableStore.getState().currentPage).toBe(1)
+      })
     })
   })
 })
